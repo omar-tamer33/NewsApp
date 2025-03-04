@@ -1,5 +1,7 @@
 package com.example.newsapp.news
 
+import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,28 +17,37 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat.startActivity
 import coil3.compose.AsyncImage
 import com.example.newsapp.R
 import com.example.newsapp.api.ApiManager
@@ -50,11 +61,14 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+
 @Composable
 fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
     val sourcesList = remember { mutableStateListOf<SourcesItem>() }
     val newsList = remember { mutableStateListOf<ArticlesItem>() }
     val selectedSourceId = remember { mutableStateOf("") }
+    val isSheetOpen = remember { mutableStateOf(false) }
+    val selectedArticle = remember { mutableStateOf<ArticlesItem?>(null) }
     LaunchedEffect(selectedSourceId.value) {
         getNewsBySource(selectedSourceId.value , onSuccess = {
             newsList.addAll(it)
@@ -64,7 +78,7 @@ fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
         getSourcesList(categoryApiId , onSuccess = {
             sourcesList.addAll(it)
         }, onFailure = {
-            Log.e("TAG", "onFailure: $it ", )
+            Log.e("TAG", "onFailure: $it ")
         })
     }
     Column(modifier = Modifier) {
@@ -74,7 +88,56 @@ fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
                 selectedSourceId.value = sourceId
             })
         }
-        NewsLazyColumn(newsList)
+        NewsLazyColumn(
+            articlesList = newsList,
+            onArticleClick = { article ->
+                selectedArticle.value = article
+                isSheetOpen.value = true
+            }
+        )
+    }
+
+    selectedArticle.value?.let { article ->
+        if (isSheetOpen.value) {
+            BottomSheet(
+                articlesItem = article,
+                isSheetOpen = isSheetOpen,
+                onDismiss = { isSheetOpen.value = false }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BottomSheet( articlesItem: ArticlesItem , modifier: Modifier = Modifier ,  isSheetOpen: MutableState<Boolean> , onDismiss : () -> Unit) {
+    val bottomSheetState = rememberModalBottomSheetState()
+    val context = LocalContext.current
+    ModalBottomSheet(onDismissRequest = {onDismiss()} , sheetState = bottomSheetState) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally , modifier = Modifier.padding(8.dp)) {
+            AsyncImage(model = articlesItem.urlToImage, contentDescription = "Article Image")
+            Text(
+                text = articlesItem.description ?: "",
+                color = black,
+                fontWeight = FontWeight.W500,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(8.dp),
+                overflow = TextOverflow.Ellipsis
+            )
+            Button(onClick = {
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(articlesItem.url))
+                context.startActivity(intent)
+            } , colors = ButtonDefaults.buttonColors(Color.Black) , shape = RoundedCornerShape(8.dp)) {
+                    Text(
+                        text = "View Full Article",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.W700,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+            }
+        }
     }
 }
 
@@ -134,12 +197,12 @@ private fun SourcesLazyRowPreview() {
 }
 
 @Composable
-fun NewsCard(articlesItem: ArticlesItem, modifier: Modifier = Modifier) {
+fun NewsCard(articlesItem: ArticlesItem, modifier: Modifier = Modifier , onArticleClick : (ArticlesItem) -> Unit) {
     Card(modifier = Modifier
         .padding(8.dp)
         .fillMaxWidth(0.95F)
         .border(width = 1.dp, color = Color.White, shape = RoundedCornerShape(16.dp))
-        .padding(8.dp)) {
+        .padding(8.dp) , onClick = { onArticleClick(articlesItem) }) {
         Column(modifier = Modifier.background(black)) {
             AsyncImage(model = articlesItem.urlToImage , contentDescription = "article image" , modifier = Modifier
                 .fillMaxWidth())
@@ -153,25 +216,19 @@ fun NewsCard(articlesItem: ArticlesItem, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview
-@Composable
-private fun NewsCardPreview() {
-    NewsCard(articlesItem = ArticlesItem(urlToImage = "https://www.aljazeera.com/wp-content/uploads/2025/02/image-1740778104.jpg?resize=1920%2C1080&quality=80"
-        , title = "Trump cuts talks short with Zelenskyy after heated meeting" , author = "Al Jazeera" , publishedAt = "2025-02-28T21:29:32Z")
-    )
-}
+
 
 @Composable
-fun NewsLazyColumn(articlesList : List<ArticlesItem>, modifier: Modifier = Modifier) {
+fun NewsLazyColumn(articlesList : List<ArticlesItem>, modifier: Modifier = Modifier , onArticleClick: (ArticlesItem) -> Unit) {
     LazyColumn {
         items(articlesList){ article ->
-            NewsCard(article)
+            NewsCard(article , onArticleClick = onArticleClick)
         }
     }
 }
 
 fun getSourcesList(categoryApiId: String , onSuccess : (List<SourcesItem>) -> Unit, onFailure : (message : String) -> Unit){
-    ApiManager.newsService.getSources("adb724f79b944484accc7bdd2b789ecc" , categoryApiId ).enqueue(object :
+    ApiManager.newsService.getSources("e5fabf68a10342c4827408cc84427a89" , categoryApiId ).enqueue(object :
         Callback<SourcesResponse> {
         override fun onResponse(call: Call<SourcesResponse>, response: Response<SourcesResponse>) {
             val sourcesList = response.body()?.sources?.filterNotNull()
@@ -188,7 +245,7 @@ fun getSourcesList(categoryApiId: String , onSuccess : (List<SourcesItem>) -> Un
 }
 
 fun getNewsBySource(sourceId : String , onSuccess: (List<ArticlesItem>) -> Unit , onFailure: (message: String) -> Unit){
-    ApiManager.newsService.getNewsBySource(sourceId = sourceId , apiKey = "adb724f79b944484accc7bdd2b789ecc").enqueue(object :
+    ApiManager.newsService.getNewsBySource(sourceId = sourceId , apiKey = "e5fabf68a10342c4827408cc84427a89").enqueue(object :
         Callback<NewsResponse> {
         override fun onResponse(call: Call<NewsResponse>, response: Response<NewsResponse>) {
             val articlesList = response.body()?.articles?.filterNotNull()
