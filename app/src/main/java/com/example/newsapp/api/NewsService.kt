@@ -12,4 +12,7 @@ interface NewsService {
 
     @GET("everything")
     fun getNewsBySource(@Query("sources") sourceId : String , @Query("apiKey") apiKey: String) : Call<NewsResponse>
+
+    @GET("everything")
+    fun getNewsBySearch(@Query("q") q : String , @Query("apiKey") apiKey: String) : Call<NewsResponse>
 }

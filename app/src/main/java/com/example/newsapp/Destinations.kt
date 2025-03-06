@@ -5,4 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 object CategoryScreen
 @Serializable
-class NewsScreen(val categoryApiId : String)
+class NewsScreen(val categoryApiId : String , val title : String)
+
+@Serializable
+object SearchScreen

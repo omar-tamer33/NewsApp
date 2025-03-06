@@ -3,9 +3,11 @@ package com.example.newsapp.news
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.widget.EditText
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -22,9 +24,14 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldColors
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -39,17 +46,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.example.newsapp.R
+import com.example.newsapp.SearchScreen
 import com.example.newsapp.api.ApiManager
 import com.example.newsapp.api.model.ArticlesItem
 import com.example.newsapp.api.model.NewsResponse
@@ -63,7 +74,7 @@ import retrofit2.Response
 
 
 @Composable
-fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
+fun NewsScreenContent(navController: NavController , modifier: Modifier = Modifier , categoryApiId : String , title: String) {
     val sourcesList = remember { mutableStateListOf<SourcesItem>() }
     val newsList = remember { mutableStateListOf<ArticlesItem>() }
     val selectedSourceId = remember { mutableStateOf("") }
@@ -81,22 +92,25 @@ fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
             Log.e("TAG", "onFailure: $it ")
         })
     }
-    Column(modifier = Modifier) {
-        if (sourcesList.isNotEmpty()) {
-            SourceLazyRow(sourcesList, onSelectedTab = { sourceId ->
-                newsList.clear()
-                selectedSourceId.value = sourceId
-            })
-        }
-        NewsLazyColumn(
-            articlesList = newsList,
-            onArticleClick = { article ->
-                selectedArticle.value = article
-                isSheetOpen.value = true
+    Scaffold(containerColor = black , topBar = { TopAppBar(title){
+        navController.navigate(SearchScreen)
+    } }) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
+            if (sourcesList.isNotEmpty()) {
+                SourceLazyRow(sourcesList, onSelectedTab = { sourceId ->
+                    newsList.clear()
+                    selectedSourceId.value = sourceId
+                })
             }
-        )
+            NewsLazyColumn(
+                articlesList = newsList,
+                onArticleClick = { article ->
+                    selectedArticle.value = article
+                    isSheetOpen.value = true
+                }
+            )
+        }
     }
-
     selectedArticle.value?.let { article ->
         if (isSheetOpen.value) {
             BottomSheet(
@@ -113,9 +127,10 @@ fun NewsScreenContent(modifier: Modifier = Modifier , categoryApiId : String) {
 fun BottomSheet( articlesItem: ArticlesItem , modifier: Modifier = Modifier ,  isSheetOpen: MutableState<Boolean> , onDismiss : () -> Unit) {
     val bottomSheetState = rememberModalBottomSheetState()
     val context = LocalContext.current
-    ModalBottomSheet(onDismissRequest = {onDismiss()} , sheetState = bottomSheetState) {
+    ModalBottomSheet(onDismissRequest = {onDismiss()} , sheetState = bottomSheetState , dragHandle = {}) {
         Column(horizontalAlignment = Alignment.CenterHorizontally , modifier = Modifier.padding(8.dp)) {
-            AsyncImage(model = articlesItem.urlToImage, contentDescription = "Article Image")
+            AsyncImage(model = articlesItem.urlToImage , contentDescription = "article image" , modifier = Modifier
+                .fillMaxWidth())
             Text(
                 text = articlesItem.description ?: "",
                 color = black,
@@ -143,16 +158,16 @@ fun BottomSheet( articlesItem: ArticlesItem , modifier: Modifier = Modifier ,  i
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBar(title: String, modifier: Modifier = Modifier) {
+fun TopAppBar(title: String, modifier: Modifier = Modifier , onSearchClick : () -> Unit) {
     CenterAlignedTopAppBar(colors = TopAppBarDefaults.centerAlignedTopAppBarColors(black) , title = {
         Text(text = title , fontWeight = FontWeight.W500 , color = Color.White , fontSize = 20.sp)
     }, actions = {
-        Image(painter = painterResource(R.drawable.ic_search) , contentDescription = "Search Icon")
+        IconButton(onClick = {onSearchClick()}) {
+            Image(painter = painterResource(R.drawable.ic_search) , contentDescription = "Search Icon") }
     }, navigationIcon = {
         Image(painter = painterResource(R.drawable.ic_nav_menu) , contentDescription = "Navigation Icon")
     } , windowInsets = WindowInsets(left = 8.dp , right = 8.dp))
 }
-
 
 
 @Composable
@@ -259,4 +274,6 @@ fun getNewsBySource(sourceId : String , onSuccess: (List<ArticlesItem>) -> Unit 
         }
 
     })
+
+
 }

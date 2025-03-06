@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.AbsoluteAlignment
@@ -31,20 +32,30 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.newsapp.NewsScreen
 import com.example.newsapp.R
+import com.example.newsapp.SearchScreen
 import com.example.newsapp.api.model.Category
+import com.example.newsapp.news.TopAppBar
+import com.example.newsapp.ui.theme.black
 import com.example.newsapp.ui.theme.blackWithOpacity
 import com.example.newsapp.ui.theme.titleColor
 
 @Composable
 fun CategoriesContent(navController: NavController , modifier: Modifier = Modifier) {
     val list = Category.getCategoryList()
-    LazyColumn {
-        item {
-            ShowCategoriesTitle()
-        }
-        items(Category.getCategoryList().size){ position ->
-            CategoryCardContent(
-                category = list[position], isRight = position % 2 == 0, onCardClick = {navController.navigate(NewsScreen(it))})
+    Scaffold(containerColor = black , topBar = { TopAppBar("Home"){
+        navController.navigate(SearchScreen)
+    } }) { paddingValues ->
+        LazyColumn(contentPadding = paddingValues){
+            item {
+                ShowCategoriesTitle()
+            }
+            items(Category.getCategoryList().size) { position ->
+                CategoryCardContent(
+                    category = list[position],
+                    isRight = position % 2 == 0,
+                    onCardClick = { categoryId , title ->
+                        navController.navigate(NewsScreen(categoryId , title)) })
+            }
         }
     }
 }
@@ -52,11 +63,11 @@ fun CategoriesContent(navController: NavController , modifier: Modifier = Modifi
 
 
 @Composable
-fun CategoryCardContent(modifier: Modifier = Modifier , category: Category , isRight : Boolean , onCardClick : (categoryId : String) -> Unit) {
+fun CategoryCardContent(modifier: Modifier = Modifier , category: Category , isRight : Boolean , onCardClick : (categoryId : String , title : String) -> Unit) {
     Card(shape = RoundedCornerShape(16.dp) , colors = CardDefaults.cardColors(Color.White) , modifier = Modifier
         .padding(8.dp)
         .fillMaxWidth()
-        .height(200.dp) , onClick = {onCardClick(category.apiId)}) {
+        .height(200.dp) , onClick = {onCardClick(category.apiId , category.title)}) {
         if (isRight){
             Row(modifier = Modifier.fillMaxWidth()) {
                 Image(painter = painterResource(category.imageId) , contentDescription = "Category Image" , modifier = Modifier.fillMaxHeight())

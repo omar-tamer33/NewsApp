@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import com.example.newsapp.category.CategoriesContent
 import com.example.newsapp.news.NewsScreenContent
+import com.example.newsapp.news.SearchScreenContent
 import com.example.newsapp.news.TopAppBar
 import com.example.newsapp.ui.theme.black
 
@@ -30,20 +31,21 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun NewsAppContent(modifier: Modifier = Modifier) {
-    Scaffold(containerColor = black , topBar = { TopAppBar("News App")}) { paddingValues ->
             val navController = rememberNavController()
-            NavHost(navController = navController , startDestination = CategoryScreen , modifier = Modifier.padding(paddingValues)){
+            NavHost(navController = navController , startDestination = CategoryScreen){
                 composable<CategoryScreen>{
                     CategoriesContent(navController)
                 }
                 composable<NewsScreen>{ navBackStackEntry ->
                     val newsScreen = navBackStackEntry.toRoute<NewsScreen>()
-                    NewsScreenContent(categoryApiId = newsScreen.categoryApiId)
+                    NewsScreenContent(categoryApiId = newsScreen.categoryApiId , title = newsScreen.title , navController = navController)
 
+                }
+                composable<SearchScreen> { navBackStackEntry ->
+                        SearchScreenContent()
                 }
             }
     }
-}
 
 @Preview(showSystemUi = true)
 @Composable
