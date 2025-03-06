@@ -14,13 +14,13 @@ data class Category(val title : String , val imageId : Int , val apiId : String)
 
         fun getCategoryList() : List<Category>{
            return listOf(
-                Category("General" , R.drawable.img_general , General),
-                Category("Business" , R.drawable.img_business , Business),
-               Category("Sports" , R.drawable.img_sports , Sports),
-               Category("Technology" , R.drawable.img_technology , Technology),
-               Category("Entertainment" , R.drawable.img_entertainment , Entertainment),
-                Category("Health" , R.drawable.img_health , Health),
-                Category("Science" , R.drawable.img_science , Science)
+                Category(title = "General" , R.drawable.img_general , General),
+                Category(title = "Business" , R.drawable.img_business , Business),
+               Category(title = "Sports" , R.drawable.img_sports , Sports),
+               Category(title = "Technology" , R.drawable.img_technology , Technology),
+               Category(title = "Entertainment" , R.drawable.img_entertainment , Entertainment),
+                Category(title = "Health" , R.drawable.img_health , Health),
+                Category(title = "Science" , R.drawable.img_science , Science)
                 )
         }
 
