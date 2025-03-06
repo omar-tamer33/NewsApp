@@ -7,11 +7,13 @@ import android.widget.EditText
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -23,6 +25,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
@@ -57,6 +60,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.example.newsapp.R
@@ -74,23 +78,17 @@ import retrofit2.Response
 
 
 @Composable
-fun NewsScreenContent(navController: NavController , modifier: Modifier = Modifier , categoryApiId : String , title: String) {
-    val sourcesList = remember { mutableStateListOf<SourcesItem>() }
-    val newsList = remember { mutableStateListOf<ArticlesItem>() }
-    val selectedSourceId = remember { mutableStateOf("") }
-    val isSheetOpen = remember { mutableStateOf(false) }
-    val selectedArticle = remember { mutableStateOf<ArticlesItem?>(null) }
+fun NewsScreenContent(viewModel: NewsViewModel , navController: NavController , modifier: Modifier = Modifier , categoryApiId : String , title: String) {
+    val sourcesList = viewModel.sourceList
+    val newsList = viewModel.newsList
+    val selectedArticle = viewModel.selectedArticle
+    val selectedSourceId = viewModel.selectedSourceId
+    val isSheetOpen = viewModel.isSheetOpen
     LaunchedEffect(selectedSourceId.value) {
-        getNewsBySource(selectedSourceId.value , onSuccess = {
-            newsList.addAll(it)
-        } , onFailure = {})
+        viewModel.getNewsBySource(selectedSourceId.value)
     }
     LaunchedEffect(Unit) {
-        getSourcesList(categoryApiId , onSuccess = {
-            sourcesList.addAll(it)
-        }, onFailure = {
-            Log.e("TAG", "onFailure: $it ")
-        })
+        viewModel.getSourcesList(categoryApiId)
     }
     Scaffold(containerColor = black , topBar = { TopAppBar(title){
         navController.navigate(SearchScreen)
@@ -98,7 +96,6 @@ fun NewsScreenContent(navController: NavController , modifier: Modifier = Modifi
         Column(modifier = Modifier.padding(paddingValues)) {
             if (sourcesList.isNotEmpty()) {
                 SourceLazyRow(sourcesList, onSelectedTab = { sourceId ->
-                    newsList.clear()
                     selectedSourceId.value = sourceId
                 })
             }
@@ -109,6 +106,16 @@ fun NewsScreenContent(navController: NavController , modifier: Modifier = Modifi
                     isSheetOpen.value = true
                 }
             )
+        }
+    }
+
+    if (viewModel.isLoading.value) {
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(color = Color.White)
         }
     }
     selectedArticle.value?.let { article ->
@@ -242,38 +249,3 @@ fun NewsLazyColumn(articlesList : List<ArticlesItem>, modifier: Modifier = Modif
     }
 }
 
-fun getSourcesList(categoryApiId: String , onSuccess : (List<SourcesItem>) -> Unit, onFailure : (message : String) -> Unit){
-    ApiManager.newsService.getSources("e5fabf68a10342c4827408cc84427a89" , categoryApiId ).enqueue(object :
-        Callback<SourcesResponse> {
-        override fun onResponse(call: Call<SourcesResponse>, response: Response<SourcesResponse>) {
-            val sourcesList = response.body()?.sources?.filterNotNull()
-            if (!sourcesList.isNullOrEmpty()){
-                onSuccess(sourcesList)
-            }
-        }
-
-        override fun onFailure(call: Call<SourcesResponse>, throwable: Throwable) {
-            onFailure(throwable.message.toString())
-        }
-
-    })
-}
-
-fun getNewsBySource(sourceId : String , onSuccess: (List<ArticlesItem>) -> Unit , onFailure: (message: String) -> Unit){
-    ApiManager.newsService.getNewsBySource(sourceId = sourceId , apiKey = "e5fabf68a10342c4827408cc84427a89").enqueue(object :
-        Callback<NewsResponse> {
-        override fun onResponse(call: Call<NewsResponse>, response: Response<NewsResponse>) {
-            val articlesList = response.body()?.articles?.filterNotNull()
-            if (!articlesList.isNullOrEmpty()){
-                onSuccess(articlesList)
-            }
-        }
-
-        override fun onFailure(call: Call<NewsResponse>, throwable: Throwable){
-            onFailure(throwable.message.toString())
-        }
-
-    })
-
-
-}

@@ -43,28 +43,13 @@ import retrofit2.Callback
 import retrofit2.Response
 
 @Composable
-fun SearchScreenContent(modifier: Modifier = Modifier) {
-    val newsList = remember { mutableStateListOf<ArticlesItem>() }
-    val isSheetOpen = remember { mutableStateOf(false) }
-    val selectedArticle = remember { mutableStateOf<ArticlesItem?>(null) }
-    LaunchedEffect(Unit) {
-        getNewsBySearch(
-            q ="" ,
-            onSuccess = {
-                newsList.addAll(it)
-            },
-            onFailure = {
-                Log.e("TAG", it )
-            }
-        )
-    }
+fun SearchScreenContent(modifier: Modifier = Modifier , viewModel: NewsViewModel) {
+    val newsList = viewModel.newsList
+    val selectedArticle = viewModel.selectedArticle
+    val isSheetOpen = viewModel.isSheetOpen
+
     Scaffold(containerColor = black , topBar = { SearchTopAppBar(){ text ->
-        getNewsBySearch(q = text, onSuccess = {
-            newsList.clear()
-            newsList.addAll(it)
-        }, onFailure = {
-            Log.e("TAG", it )
-        })
+        viewModel.getNewsBySearch(text)
     } }) { paddingValues ->
         Column(
             Modifier
@@ -122,18 +107,3 @@ private fun SearchTopAppBarPreview() {
     SearchTopAppBar(){}
 }
 
-fun getNewsBySearch(q : String, onSuccess: (List<ArticlesItem>) -> Unit, onFailure: (message: String) -> Unit){
-    ApiManager.newsService.getNewsBySearch(q , "e5fabf68a10342c4827408cc84427a89").enqueue(object :
-        Callback<NewsResponse> {
-        override fun onResponse(call: Call<NewsResponse>, response: Response<NewsResponse>) {
-            val articlesList = response.body()?.articles?.filterNotNull()
-            if (!articlesList.isNullOrEmpty()){
-                onSuccess(articlesList)
-            }
-        }
-
-        override fun onFailure(call: Call<NewsResponse>, throwable: Throwable) {
-            onFailure(throwable.message.toString())
-        }
-    })
-}
